@@ -21,6 +21,10 @@ CGFloat degToRad(CGFloat degree) {
     return degree / 180.0f * M_PI;
 }
 
+CGPoint mult(const CGPoint v, const CGFloat s) {
+    return CGPointMake(v.x*s, v.y*s);
+}
+
 @implementation GameScene
 
 -(instancetype)initWithSize:(CGSize)size {
@@ -105,6 +109,11 @@ CGFloat degToRad(CGFloat degree) {
     }
 }
 
+- (void)didMoveToView:(SKView *)view {
+    UIPanGestureRecognizer *gestureRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePanFrom:)];
+    [[self view] addGestureRecognizer:gestureRecognizer];
+}
+
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     UITouch *touch = [touches anyObject];
     CGPoint positionInScene = [touch locationInNode:self];
@@ -116,6 +125,36 @@ CGFloat degToRad(CGFloat degree) {
 
 -(void)update:(CFTimeInterval)currentTime {
     /* Called before each frame is rendered */
+}
+
+- (void)handlePanFrom:(UIPanGestureRecognizer *)recognizer {
+    if (recognizer.state == UIGestureRecognizerStateBegan) {
+        CGPoint touchLocation = [recognizer locationInView:recognizer.view];
+        touchLocation = [self convertPointFromView:touchLocation];
+        [self selectNodeForTouch:touchLocation];
+    }
+    else if (recognizer.state == UIGestureRecognizerStateChanged) {
+        CGPoint translation = [recognizer translationInView:recognizer.view];
+        translation = CGPointMake(translation.x, -translation.y);
+        [self panForTranslation:translation];
+        [recognizer setTranslation:CGPointZero inView:recognizer.view];
+    }
+    else if (recognizer.state == UIGestureRecognizerStateEnded) {
+        if (![[_selectedNode name] isEqualToString:kAnimalNodeName]) {
+            float scrollDuration = 0.2;
+            CGPoint velocity = [recognizer velocityInView:recognizer.view];
+            CGPoint position = [_selectedNode position];
+            CGPoint p = mult(velocity, scrollDuration);
+            
+            CGPoint newPosition = CGPointMake(position.x + p.x, position.y + p.y);
+            newPosition = [self boundLayerPosition:newPosition];
+            [_selectedNode removeAllActions];
+            
+            SKAction *moveTo = [SKAction moveTo:newPosition duration:scrollDuration];
+            [moveTo setTimingMode:SKActionTimingEaseOut];
+            [_selectedNode runAction:moveTo];
+        }
+    }
 }
 
 @end
